@@ -1,36 +1,49 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Wedding Planner
 
-## Getting Started
+Collaborative date picker for an Aug–Oct 2026 wedding in Utah County.
 
-First, run the development server:
+- **Stack:** Next.js 16 (App Router) + TypeScript + Tailwind v4 + @supabase/ssr + Recharts
+- **Backend:** Supabase Postgres + Auth (magic-link, open signup)
+- **Data:** 10-yr historical weather for Lindon, Highland, Lehi, Orem, Alpine (Open-Meteo); BYU 2026 football; federal holidays
+
+See `PLAN.md` for the full design.
+
+## Run locally
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+bun install
+bun run dev
+# http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`.env.local` contains the Supabase URL + publishable key. Sign in with name + email; you'll receive a magic link.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Project layout
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+src/
+├── app/
+│   ├── page.tsx            calendar (Aug–Oct 2026)
+│   ├── login/page.tsx
+│   ├── day/[date]/page.tsx
+│   └── auth/{callback,signout}/route.ts
+├── components/             Calendar, DayTile, WeatherChart, CommentThread, Toggles, …
+├── actions/                ratings, comments, events server actions
+├── lib/
+│   ├── supabase/           client/server/proxy
+│   ├── queries.ts          RSC data fetchers
+│   ├── dates.ts            window helpers (2026-08 → 2026-10)
+│   └── cities.ts           5-city lat/lon table
+├── proxy.ts                Next 16 middleware → auth gate
+supabase/migrations/0001_init.sql
+scripts/
+├── pull-weather.ts         Open-Meteo archive pull (one-time)
+└── build-weather-sql.ts    JSON → SQL chunk emitter
+```
 
-## Learn More
+## Re-pulling weather
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+bun run scripts/pull-weather.ts        # writes /tmp/wedding-weather.json
+# Then bulk-POST via PostgREST or apply via Supabase MCP.
+```
