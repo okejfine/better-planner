@@ -2,7 +2,7 @@
 
 @theme {
   --font-sans: var(--font-sans), system-ui, -apple-system, sans-serif;
-  --font-serif: var(--font-serif), "Cormorant Garamond", Georgia, serif;
+  --font-serif: var(--font-serif), var(--font-sans), system-ui, -apple-system, sans-serif;
 }
 
 html,
@@ -12,4 +12,102 @@ body {
 
 .font-serif {
   font-family: var(--font-serif);
+}
+
+/* ============================================================
+   DARK MODE
+   Maps the stone scale to an inverted near-black palette.
+   "bg-stone-50" becomes the darkest, "bg-stone-900" brightest.
+   ============================================================ */
+[data-theme="dark"] {
+  --color-stone-50:  #18181b;   /* body bg */
+  --color-stone-100: #27272a;   /* subtle bg */
+  --color-stone-200: #3f3f46;   /* borders */
+  --color-stone-300: #52525b;
+  --color-stone-400: #71717a;
+  --color-stone-500: #a1a1aa;   /* muted text */
+  --color-stone-600: #d4d4d8;
+  --color-stone-700: #e4e4e7;
+  --color-stone-800: #f4f4f5;
+  --color-stone-900: #fafafa;   /* primary text */
+  --color-white:     #27272a;   /* bg-white panels → dark card */
+  --color-black:     #fafafa;
+
+  /* Primary action buttons: stone-900 bg becomes near-white, label must be dark */
+  --btn-primary-text: #18181b;
+}
+
+/* ============================================================
+   CLANG MODE  (pink / rose)
+   Maps the stone scale to a warm pink/rose ramp.
+   ============================================================ */
+[data-theme="clang"] {
+  --color-stone-50:  #fff0f3;   /* body bg — blush white */
+  --color-stone-100: #ffe4ea;
+  --color-stone-200: #fecdd3;   /* borders */
+  --color-stone-300: #fda4af;
+  --color-stone-400: #fb7185;
+  --color-stone-500: #f43f5e;   /* muted/labels */
+  --color-stone-600: #e11d48;
+  --color-stone-700: #be123c;
+  --color-stone-800: #9f1239;
+  --color-stone-900: #881337;   /* primary text */
+  --color-white:     #fff0f3;   /* bg-white panels → blush */
+  --color-black:     #881337;
+
+  /* Fonts — girly */
+  --font-sans:   var(--font-clang), system-ui, sans-serif;
+  --font-serif:  var(--font-clang-display), var(--font-clang), system-ui, sans-serif;
+
+  --btn-primary-text: #fff0f3;
+}
+
+/* ============================================================
+   ALEX MODE  (cool near-black teal)
+   Exact ramp from the supplied spec.
+   ============================================================ */
+[data-theme="alex"] {
+  /* Stone scale → teal ramp */
+  --color-stone-50:  #060A0C;   /* --black: app background */
+  --color-stone-100: #17242B;   /* --deep: card fill */
+  --color-stone-200: #26383D;   /* --mid: surface/borders */
+  --color-stone-300: #3d5a63;
+  --color-stone-400: #527680;
+  --color-stone-500: #6E9BA4;   /* --steel: muted labels */
+  --color-stone-600: #93bec5;
+  --color-stone-700: #BEE3E5;   /* --mist: primary UI text */
+  --color-stone-800: #CFEEF0;   /* --cloud: body prose */
+  --color-stone-900: #BEE3E5;   /* primary text (fg1) */
+  --color-white:     #17242B;   /* bg-white panels → deep teal card */
+  --color-black:     #BEE3E5;
+
+  /* Rose-600 error color → spec alert red */
+  --color-rose-600:  #F84D2B;
+
+  /* Fonts — Space Grotesk + Inter */
+  --font-sans:   var(--font-alex), system-ui, sans-serif;
+  --font-serif:  var(--font-alex-display), var(--font-alex), system-ui, sans-serif;
+  --font-mono:   var(--font-alex-mono), ui-monospace, monospace;
+
+  --btn-primary-text: #060A0C;
+}
+
+/* ============================================================
+   PRIMARY BUTTON LABEL CONTRAST FIX
+   bg-stone-900 text-white is used for primary action buttons.
+   When stone-900 becomes a light color (dark/clang/alex),
+   the white label becomes invisible.
+   We target the pattern and swap to the per-theme dark color.
+   ============================================================ */
+[data-theme="dark"] .bg-stone-900,
+[data-theme="clang"] .bg-stone-900,
+[data-theme="alex"] .bg-stone-900 {
+  color: var(--btn-primary-text, #ffffff);
+}
+
+/* Ensure hover states also keep the override */
+[data-theme="dark"] .hover\:bg-stone-800:hover,
+[data-theme="clang"] .hover\:bg-stone-800:hover,
+[data-theme="alex"] .hover\:bg-stone-800:hover {
+  color: var(--btn-primary-text, #ffffff);
 }

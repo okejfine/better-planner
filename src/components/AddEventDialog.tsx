@@ -3,6 +3,8 @@
 import { useState, useTransition } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { addCustomEvent } from "@/actions/events";
+import { useTheme } from "@/components/theme/ThemeProvider";
+import { fireRoseConfetti } from "@/lib/confetti";
 
 export function AddEventDialog({
   defaultDate,
@@ -10,11 +12,12 @@ export function AddEventDialog({
   defaultDate?: string;
 }) {
   const [open, setOpen] = useState(false);
-  const [date, setDate] = useState(defaultDate ?? "2026-08-01");
+  const [date, setDate] = useState(defaultDate ?? "2026-07-01");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const { theme } = useTheme();
 
   function reset() {
     setTitle("");
@@ -35,6 +38,7 @@ export function AddEventDialog({
         .then(() => {
           reset();
           setOpen(false);
+          if (theme === "clang") fireRoseConfetti();
         })
         .catch((err) => setError(err.message ?? "Couldn't save."));
     });
@@ -69,7 +73,7 @@ export function AddEventDialog({
               <input
                 type="date"
                 required
-                min="2026-08-01"
+                min="2026-07-01"
                 max="2026-10-31"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}

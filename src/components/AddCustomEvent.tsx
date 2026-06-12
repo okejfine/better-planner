@@ -2,6 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { addCustomEvent } from "@/actions/events";
+import { useTheme } from "@/components/theme/ThemeProvider";
+import { fireRoseConfetti } from "@/lib/confetti";
 
 export function AddCustomEvent({ date }: { date: string }) {
   const [open, setOpen] = useState(false);
@@ -9,6 +11,7 @@ export function AddCustomEvent({ date }: { date: string }) {
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const { theme } = useTheme();
 
   function reset() {
     setTitle("");
@@ -43,6 +46,7 @@ export function AddCustomEvent({ date }: { date: string }) {
             .then(() => {
               reset();
               setOpen(false);
+              if (theme === "clang") fireRoseConfetti();
             })
             .catch((err) => setError(err.message ?? "Couldn't save."));
         });

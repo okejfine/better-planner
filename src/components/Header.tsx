@@ -1,5 +1,6 @@
 import { initials } from "@/lib/utils";
 import type { Profile } from "@/lib/types";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
 
 export function Header({ me }: { me: Profile }) {
   return (
@@ -7,13 +8,14 @@ export function Header({ me }: { me: Profile }) {
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-3 px-4 sm:px-6 py-3 sm:py-4">
         <div className="flex items-baseline gap-2 sm:gap-3 min-w-0">
           <h1 className="font-serif text-lg sm:text-2xl tracking-tight text-stone-900 truncate">
-            Wedding Planner
+            Better Planner
           </h1>
           <span className="hidden sm:inline text-xs uppercase tracking-widest text-stone-400">
-            Aug – Oct 2026
+            Jul – Oct 2026
           </span>
         </div>
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <ThemeToggle />
           <div className="text-right hidden md:block">
             <div className="text-xs text-stone-500">Signed in as</div>
             <div className="text-sm font-medium text-stone-900">
