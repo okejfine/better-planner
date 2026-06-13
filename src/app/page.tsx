@@ -74,6 +74,15 @@ export default async function HomePage({
           meId={me.id}
         />
 
+        {weather.length === 0 && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            Weather data is unavailable because no rows were returned from
+            `weather_daily`. Run the SQL migration in
+            `supabase/migrations/0003_complete_schema.sql`, then re-seed weather
+            via `bun run scripts/pull-weather.ts`.
+          </div>
+        )}
+
         <div className="pb-6 text-center text-xs text-stone-400">
           Weather is the 10-year (2016&ndash;2025) historical average, by date and city, via Open-Meteo.
         </div>

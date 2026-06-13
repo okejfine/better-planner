@@ -1,4 +1,4 @@
-# Wedding Planner — Build Plan
+# Better Planner — Build Plan
 
 Collaborative date-and-venue picker for a Utah County wedding, **August–October 2026**. Six users (Adam, fiancée, both sets of parents) rate, veto, shortlist, and discuss candidate dates against weather, BYU football, and federal holidays.
 
@@ -256,7 +256,7 @@ All writes call `revalidatePath('/')` and `revalidatePath('/day/[date]')` so ref
 ## 7. Project layout
 
 ```
-wedding-planner/
+better-planner/
 ├── PLAN.md                       (this file)
 ├── README.md                     (setup + run instructions)
 ├── package.json

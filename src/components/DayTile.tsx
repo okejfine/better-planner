@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { fromIso, type Iso } from "@/lib/dates";
+import { CITIES } from "@/lib/cities";
 import type { DaySummary } from "@/lib/queries";
 import type { EventKind } from "@/lib/types";
 import { StarsRow } from "@/components/StarsRow";
 import { EventBar } from "@/components/EventBar";
+import { CalendarEventButton } from "@/components/CalendarEventButton";
 
-const CITY_AVG_KEYS = ["lindon", "highland", "lehi", "orem", "alpine"] as const;
+const CITY_AVG_KEYS = CITIES.map((city) => city.id);
 
 const EVENT_DOT_COLOR: Record<EventKind, string> = {
   byu_football_home: "bg-[#002E5D]",
@@ -14,6 +16,8 @@ const EVENT_DOT_COLOR: Record<EventKind, string> = {
   lone_peak_home: "bg-[#7c1a3a]",
   lone_peak_away: "bg-[#7c1a3a]/40",
   federal_holiday: "bg-rose-400",
+  holiday: "bg-orange-400",
+  lds_conference: "bg-indigo-400",
   custom: "bg-emerald-400",
 };
 
@@ -143,9 +147,17 @@ export function DayTile({
         sundayBlocked && "opacity-70",
       )}
     >
-      {summary?.events.slice(0, 3).map((e) => (
-        <EventBar key={e.id} kind={e.kind} title={e.title} />
-      ))}
+      {summary?.events.slice(0, 3).map((e) =>
+        e.kind === "custom" ? (
+          <CalendarEventButton
+            key={e.id}
+            event={e}
+            ownedByMe={e.created_by === meId}
+          />
+        ) : (
+          <EventBar key={e.id} kind={e.kind} title={e.title} />
+        ),
+      )}
       {summary && summary.events.length > 3 && (
         <div className="text-[10px] text-stone-500 px-1">
           +{summary.events.length - 3} more
@@ -213,12 +225,18 @@ export function DayTile({
   );
 
   return (
-    <Link href={`/day/${iso}`} prefetch={false} className={containerClasses}>
+    <div className={containerClasses}>
+      <Link
+        href={`/day/${iso}`}
+        prefetch={false}
+        aria-label={`Open ${iso}`}
+        className="absolute inset-0 z-[1]"
+      />
       {dayHeader}
       {eventDotsMobile}
       {eventListDesktop}
       {mobileSignals}
       {desktopSignals}
-    </Link>
+    </div>
   );
 }

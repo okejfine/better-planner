@@ -8,6 +8,7 @@ import {
   toMonthDay,
   type Iso,
 } from "@/lib/dates";
+import { BYPASS_PROFILE, isBypassAuthEnabled } from "@/lib/auth-mode";
 import type {
   CommentRow,
   DayRating,
@@ -30,23 +31,37 @@ function windowEnd(): Iso {
 }
 
 export const getCurrentUserProfile = cache(async () => {
+  if (isBypassAuthEnabled()) return BYPASS_PROFILE;
+
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return null;
-  const { data } = await supabase
-    .from("profiles")
-    .select("id, email, display_name, avatar_color")
-    .eq("id", user.id)
-    .maybeSingle();
-  if (data) return data as Profile;
-  // Profile row missing (trigger failed or row was wiped). Recover by inserting.
+
   const fallbackName =
     (user.user_metadata?.display_name as string | undefined) ??
     user.email?.split("@")[0] ??
     "Guest";
-  const { data: created } = await supabase
+  const fallbackProfile: Profile = {
+    id: user.id,
+    email: user.email ?? "",
+    display_name: fallbackName,
+    avatar_color: "#6366f1",
+  };
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, email, display_name, avatar_color")
+    .eq("id", user.id)
+    .maybeSingle();
+  if (error) {
+    // Keep auth flow usable even when schema or RLS is temporarily misconfigured.
+    return fallbackProfile;
+  }
+  if (data) return data as Profile;
+  // Profile row missing (trigger failed or row was wiped). Recover by inserting.
+  const { data: created, error: createError } = await supabase
     .from("profiles")
     .insert({
       id: user.id,
@@ -55,7 +70,10 @@ export const getCurrentUserProfile = cache(async () => {
     })
     .select("id, email, display_name, avatar_color")
     .single();
-  return (created as Profile | null) ?? null;
+  if (createError) {
+    return fallbackProfile;
+  }
+  return (created as Profile | null) ?? fallbackProfile;
 });
 
 export const getAllProfiles = cache(async () => {
@@ -88,31 +106,78 @@ export const getRatingsInWindow = cache(async () => {
   return (data ?? []) as DayRating[];
 });
 
-export const getWeatherDaily = cache(async () => {
+async function fetchAllRows<T>(
+  table: "weather_daily",
+  logLabel: string,
+): Promise<T[]> {
   const supabase = await createClient();
-  const { data } = await supabase.from("weather_daily").select("*");
-  return (data ?? []) as WeatherDaily[];
+  const pageSize = 1000;
+  const rows: T[] = [];
+
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await supabase
+      .from(table)
+      .select("*")
+      .order("city", { ascending: true })
+      .order("month_day", { ascending: true })
+      .range(from, from + pageSize - 1);
+
+    if (error) {
+      console.error(`[${logLabel}] query failed`, {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+      });
+      break;
+    }
+
+    if (!data?.length) break;
+    rows.push(...(data as T[]));
+    if (data.length < pageSize) break;
+  }
+
+  return rows;
+}
+
+export const getWeatherDaily = cache(async () => {
+  return fetchAllRows<WeatherDaily>("weather_daily", "weather_daily");
 });
 
 export const getWeatherHourlyForDate = cache(async (iso: Iso) => {
   const md = toMonthDay(iso);
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("weather_hourly")
     .select("*")
     .eq("month_day", md)
     .order("hour", { ascending: true });
+  if (error) {
+    console.error("[weather_hourly] query failed", {
+      month_day: md,
+      code: error.code,
+      message: error.message,
+      details: error.details,
+    });
+  }
   return (data ?? []) as WeatherHourly[];
 });
 
 export const getYearRainForDate = cache(async (iso: Iso) => {
   const md = toMonthDay(iso);
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("weather_year_rain")
     .select("*")
     .eq("month_day", md)
     .order("hour", { ascending: true });
+  if (error) {
+    console.error("[weather_year_rain] query failed", {
+      month_day: md,
+      code: error.code,
+      message: error.message,
+      details: error.details,
+    });
+  }
   return (data ?? []) as WeatherYearRain[];
 });
 

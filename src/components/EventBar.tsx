@@ -8,6 +8,8 @@ const STYLES: Record<EventKind, string> = {
   lone_peak_home: "bg-[#7c1a3a] text-[#f8e7be] border-[#7c1a3a]",
   lone_peak_away: "bg-white text-[#7c1a3a] border-[#7c1a3a]/40 border-dashed",
   federal_holiday: "bg-rose-50 text-rose-900 border-rose-200",
+  holiday: "bg-orange-50 text-orange-900 border-orange-200",
+  lds_conference: "bg-indigo-50 text-indigo-900 border-indigo-200",
   custom: "bg-emerald-50 text-emerald-900 border-emerald-200",
 };
 

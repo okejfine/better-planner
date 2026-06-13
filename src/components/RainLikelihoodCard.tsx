@@ -7,7 +7,6 @@ import {
   XAxis,
   YAxis,
   Tooltip,
-  ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
 import { CITIES, type CityId } from "@/lib/cities";
@@ -39,7 +38,7 @@ export function RainLikelihoodCard({
   yearRain: WeatherYearRain[];
 }) {
   const [open, setOpen] = useState(false);
-  const [city, setCity] = useState<CityId>("lindon");
+  const [city, setCity] = useState<CityId>(CITIES[0].id);
 
   const score = Math.round(avgRain * 10);
   const cap = Math.max(0, Math.min(10, score));
@@ -66,7 +65,7 @@ export function RainLikelihoodCard({
       >
         <div className="flex-1">
           <div className="text-xs uppercase tracking-wider text-stone-400 font-medium">
-            Rain likelihood score (Utah County)
+            Rain likelihood score (selected cities)
           </div>
           <div className="text-sm text-stone-500 mt-0.5">{label}</div>
         </div>
@@ -225,54 +224,56 @@ function YearChart({
         Each line is a past year in <strong>{cityLabel}</strong> where the daily
         total was &gt; 1 mm. Y-axis = hourly precipitation in mm.
       </div>
-      <div className="h-56 w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart
-            data={data}
-            margin={{ left: -10, right: 8, top: 8, bottom: 0 }}
-          >
-            <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-            <XAxis
-              dataKey="hourLabel"
-              tick={{ fontSize: 11, fill: "#78716c" }}
-              interval={2}
+      <div className="h-56 w-full min-h-56">
+        <LineChart
+          key={city}
+          responsive
+          width="100%"
+          height="100%"
+          data={data}
+          margin={{ left: -10, right: 8, top: 8, bottom: 0 }}
+        >
+          <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+          <XAxis
+            dataKey="hourLabel"
+            tick={{ fontSize: 11, fill: "#78716c" }}
+            interval={2}
+          />
+          <YAxis
+            tick={{ fontSize: 11, fill: "#78716c" }}
+            domain={[0, "dataMax + 0.5"]}
+            unit="mm"
+            width={48}
+          />
+          <Tooltip
+            contentStyle={{
+              background: "white",
+              border: "1px solid #e7e5e4",
+              borderRadius: 8,
+              fontSize: 12,
+            }}
+            formatter={(value, name) => [
+              typeof value === "number" && value > 0
+                ? `${value.toFixed(2)} mm`
+                : "—",
+              String(name),
+            ]}
+            labelFormatter={(l) => `at ${l}`}
+            filterNull
+          />
+          {yearsWithRain.map((y) => (
+            <Line
+              key={y}
+              type="monotone"
+              dataKey={String(y)}
+              stroke={YEAR_COLORS[y as Year]}
+              strokeWidth={1.7}
+              dot={{ r: 2 }}
+              isAnimationActive={false}
+              connectNulls={false}
             />
-            <YAxis
-              tick={{ fontSize: 11, fill: "#78716c" }}
-              domain={[0, "dataMax + 0.5"]}
-              unit="mm"
-              width={48}
-            />
-            <Tooltip
-              contentStyle={{
-                background: "white",
-                border: "1px solid #e7e5e4",
-                borderRadius: 8,
-                fontSize: 12,
-              }}
-              formatter={(value, name) => [
-                typeof value === "number" && value > 0
-                  ? `${value.toFixed(2)} mm`
-                  : "—",
-                String(name),
-              ]}
-              labelFormatter={(l) => `at ${l}`}
-              filterNull
-            />
-            {yearsWithRain.map((y) => (
-              <Line
-                key={y}
-                type="monotone"
-                dataKey={String(y)}
-                stroke={YEAR_COLORS[y as Year]}
-                strokeWidth={1.7}
-                dot={{ r: 2 }}
-                isAnimationActive={false}
-                connectNulls={false}
-              />
-            ))}
-          </LineChart>
-        </ResponsiveContainer>
+          ))}
+        </LineChart>
       </div>
       <div className="flex flex-wrap gap-x-3 gap-y-1.5 text-[11px]">
         {YEARS.map((y) => {

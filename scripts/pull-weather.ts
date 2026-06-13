@@ -1,6 +1,6 @@
 /**
- * Pull 10-year (2016-2025) hourly weather for Aug 1 - Oct 31 from Open-Meteo's
- * archive API for 5 Utah County cities. Aggregate into:
+ * Pull 10-year (2016-2025) hourly weather for Jun 1 - Dec 31 from Open-Meteo's
+ * archive API for all configured planning cities. Aggregate into:
  *   - daily means (high, low, rain probability)
  *   - hourly means (temp, precip, wind) keyed by month-day-hour
  * Writes JSON to /tmp/wedding-weather.json so we can apply it via execute_sql.
@@ -14,6 +14,13 @@ const CITIES = [
   { id: "lehi", lat: 40.3916, lon: -111.8508 },
   { id: "orem", lat: 40.2969, lon: -111.6946 },
   { id: "alpine", lat: 40.4533, lon: -111.7741 },
+  { id: "washington_dc", lat: 38.9072, lon: -77.0369 },
+  { id: "holiday_ut", lat: 40.6208, lon: -111.889 },
+  { id: "cabo_mx", lat: 22.8905, lon: -109.9167 },
+  { id: "honolulu_hi", lat: 21.3099, lon: -157.8581 },
+  { id: "maui_hi", lat: 20.8893, lon: -156.4729 },
+  { id: "cancun_mx", lat: 21.1619, lon: -86.8515 },
+  { id: "huntington_beach_ca", lat: 33.6595, lon: -117.9988 },
 ] as const;
 
 const YEARS = [2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025];
@@ -36,8 +43,8 @@ async function fetchYear(city: (typeof CITIES)[number], year: number) {
   const url = new URL("https://archive-api.open-meteo.com/v1/archive");
   url.searchParams.set("latitude", String(city.lat));
   url.searchParams.set("longitude", String(city.lon));
-  url.searchParams.set("start_date", `${year}-08-01`);
-  url.searchParams.set("end_date", `${year}-10-31`);
+  url.searchParams.set("start_date", `${year}-06-01`);
+  url.searchParams.set("end_date", `${year}-12-31`);
   url.searchParams.set(
     "hourly",
     "temperature_2m,precipitation,wind_speed_10m",

@@ -1,13 +1,29 @@
-import { addDays, format, startOfMonth, endOfMonth, getDay } from "date-fns";
+import { addDays, format, endOfMonth, getDay } from "date-fns";
 
 export const WINDOW_YEAR = 2026;
-export const WINDOW_MONTHS = [8, 9, 10] as const;
-export const WINDOW_MONTH_KEYS = ["2026-08", "2026-09", "2026-10"] as const;
+export const WINDOW_MONTHS = [6, 7, 8, 9, 10, 11, 12] as const;
+export const WINDOW_MONTH_KEYS = [
+  "2026-06",
+  "2026-07",
+  "2026-08",
+  "2026-09",
+  "2026-10",
+  "2026-11",
+  "2026-12",
+] as const;
 export type WindowMonthKey = (typeof WINDOW_MONTH_KEYS)[number];
 
 export function parseMonthKey(input: string | undefined | null): WindowMonthKey {
   if (input && (WINDOW_MONTH_KEYS as readonly string[]).includes(input)) {
     return input as WindowMonthKey;
+  }
+  return WINDOW_MONTH_KEYS[0];
+}
+
+export function isoToMonthKey(iso: Iso): WindowMonthKey {
+  const key = iso.slice(0, 7);
+  if ((WINDOW_MONTH_KEYS as readonly string[]).includes(key)) {
+    return key as WindowMonthKey;
   }
   return WINDOW_MONTH_KEYS[0];
 }

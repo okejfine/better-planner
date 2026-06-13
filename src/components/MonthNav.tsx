@@ -50,6 +50,8 @@ function NavButton({
       href={href}
       aria-label={label}
       prefetch
+      replace
+      scroll={false}
       className={cn(
         "inline-flex h-9 w-9 items-center justify-center rounded-full text-stone-700 hover:bg-stone-100 transition select-none text-xl",
       )}

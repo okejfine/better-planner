@@ -11,7 +11,7 @@ import {
   getWeatherHourlyForDate,
   getYearRainForDate,
 } from "@/lib/queries";
-import { fromIso, isInWindow } from "@/lib/dates";
+import { fromIso, isoToMonthKey, isInWindow } from "@/lib/dates";
 import { CITIES } from "@/lib/cities";
 import { Header } from "@/components/Header";
 import { EventBar } from "@/components/EventBar";
@@ -23,6 +23,7 @@ import { AddCustomEvent } from "@/components/AddCustomEvent";
 import { CustomEventItem } from "@/components/CustomEventItem";
 import { RainLikelihoodCard } from "@/components/RainLikelihoodCard";
 import { StarsRow } from "@/components/StarsRow";
+import { PreferredCitiesInput } from "@/components/PreferredCitiesInput";
 import { initials } from "@/lib/utils";
 
 export default async function DayPage({
@@ -87,7 +88,7 @@ export default async function DayPage({
       <Header me={me} />
       <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-5 sm:py-8 space-y-5 sm:space-y-8">
         <Link
-          href="/"
+          href={`/?month=${isoToMonthKey(date)}`}
           className="inline-flex items-center gap-2 text-sm text-stone-500 hover:text-stone-900"
         >
           ← Back to calendar
@@ -105,25 +106,31 @@ export default async function DayPage({
               Average <strong className="text-stone-700">{Math.round(avgHigh)}°</strong> high /{" "}
               <strong className="text-stone-700">{Math.round(avgLow ?? 0)}°</strong> low &middot;{" "}
               rained <strong className="text-stone-700">{Math.round(avgRain * 10)}</strong> / 10 yrs
-              <span className="text-stone-400"> (10-yr avg, Utah County)</span>
+              <span className="text-stone-400"> (10-yr avg, selected cities)</span>
             </p>
           )}
         </div>
 
         {!isSunday && (
           <section className="rounded-2xl border border-stone-200 bg-white p-6 space-y-5">
-            <div>
-              <div className="text-xs uppercase tracking-wider text-stone-500 font-medium mb-2">
-                Your rating
+            <div className="space-y-4">
+              <div>
+                <div className="text-xs uppercase tracking-wider text-stone-500 font-medium mb-2">
+                  Your rating
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <StarRatingInput date={date} initial={myRating?.stars ?? null} />
+                  <ShortlistButton
+                    date={date}
+                    initial={myRating?.shortlisted ?? false}
+                  />
+                  <VetoButton date={date} initial={myRating?.vetoed ?? false} />
+                </div>
               </div>
-              <div className="flex flex-wrap items-center gap-3">
-                <StarRatingInput date={date} initial={myRating?.stars ?? null} />
-                <ShortlistButton
-                  date={date}
-                  initial={myRating?.shortlisted ?? false}
-                />
-                <VetoButton date={date} initial={myRating?.vetoed ?? false} />
-              </div>
+              <PreferredCitiesInput
+                date={date}
+                initial={myRating?.preferred_cities ?? []}
+              />
             </div>
 
             {ratings.length > 0 && (
@@ -134,26 +141,46 @@ export default async function DayPage({
                 <div className="flex flex-wrap gap-3">
                   {profiles.map((p) => {
                     const r = ratings.find((x) => x.user_id === p.id);
+                    const cities = r?.preferred_cities ?? [];
                     return (
                       <div
                         key={p.id}
-                        className="flex items-center gap-2 rounded-full border border-stone-200 bg-stone-50 pl-1 pr-3 py-1"
+                        className="flex flex-col gap-1.5 rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 min-w-[120px]"
                       >
-                        <div
-                          className="h-6 w-6 rounded-full flex items-center justify-center text-white text-[10px] font-medium"
-                          style={{ backgroundColor: p.avatar_color }}
-                        >
-                          {initials(p.display_name)}
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="h-6 w-6 rounded-full flex items-center justify-center text-white text-[10px] font-medium shrink-0"
+                            style={{ backgroundColor: p.avatar_color }}
+                          >
+                            {initials(p.display_name)}
+                          </div>
+                          <span className="text-xs text-stone-700 font-medium">
+                            {p.display_name}
+                          </span>
+                          <StarsRow value={r?.stars ?? null} size="xs" />
+                          {r?.shortlisted && (
+                            <span className="text-amber-500 text-xs">★</span>
+                          )}
+                          {r?.vetoed && (
+                            <span className="text-rose-500 text-xs">⛔</span>
+                          )}
                         </div>
-                        <span className="text-xs text-stone-700">
-                          {p.display_name}
-                        </span>
-                        <StarsRow value={r?.stars ?? null} size="xs" />
-                        {r?.shortlisted && (
-                          <span className="text-amber-500 text-xs">★</span>
-                        )}
-                        {r?.vetoed && (
-                          <span className="text-rose-500 text-xs">⛔</span>
+                        {cities.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {cities.map((cityId) => {
+                              const label =
+                                CITIES.find((c) => c.id === cityId)?.label ??
+                                cityId;
+                              return (
+                                <span
+                                  key={cityId}
+                                  className="rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 px-2 py-0.5 text-[10px] font-medium"
+                                >
+                                  {label}
+                                </span>
+                              );
+                            })}
+                          </div>
                         )}
                       </div>
                     );
@@ -199,9 +226,16 @@ export default async function DayPage({
 
         <section>
           <WeatherChart rows={hourly} />
+          {dailyWeather.length === 0 && (
+            <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              Weather data is unavailable because no rows were returned from
+              `weather_daily`. Run `supabase/migrations/0003_complete_schema.sql`,
+              then re-seed weather via `bun run scripts/pull-weather.ts`.
+            </div>
+          )}
           {dailyForDate.length > 0 && (
             <>
-              <div className="mt-3 grid grid-cols-2 sm:grid-cols-5 gap-2">
+              <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2">
                 {CITIES.map((c) => {
                   const w = dailyForDate.find((d) => d.city === c.id);
                   const yearsRained = w

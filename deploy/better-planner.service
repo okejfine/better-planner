@@ -1,0 +1,20 @@
+[Unit]
+Description=Better Planner (Next.js standalone)
+After=network.target
+
+[Service]
+Type=simple
+# Runtime-only secrets live here (NOT the NEXT_PUBLIC_* ones, which are
+# baked in at build time). See deploy/README.md.
+EnvironmentFile=/home/ec2-user/better-planner/runtime.env
+Environment=NODE_ENV=production
+Environment=PORT=3000
+Environment=HOSTNAME=0.0.0.0
+WorkingDirectory=/home/ec2-user/better-planner
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=3
+User=ec2-user
+
+[Install]
+WantedBy=multi-user.target

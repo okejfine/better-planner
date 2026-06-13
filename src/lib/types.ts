@@ -6,6 +6,8 @@ export type EventKind =
   | "lone_peak_home"
   | "lone_peak_away"
   | "federal_holiday"
+  | "holiday"
+  | "lds_conference"
   | "custom";
 
 export type EventRow = {
@@ -32,6 +34,7 @@ export type DayRating = {
   stars: number | null;
   vetoed: boolean;
   shortlisted: boolean;
+  preferred_cities: CityId[];
 };
 
 export type CommentRow = {

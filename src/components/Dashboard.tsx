@@ -37,7 +37,7 @@ export function Dashboard({
             Score = shortlists − vetoes.
           </div>
         </div>
-        <AddEventDialog defaultDate="2026-08-01" />
+        <AddEventDialog defaultDate="2026-07-01" />
       </div>
 
       <YourShortlist dates={myShortlist.map((d) => d.date)} />
