@@ -57,9 +57,6 @@ export default function LoginPage() {
       if (error === "access_denied") {
         return "Sign-in was denied. Please request a fresh magic link and try again.";
       }
-      if (error === "not_allowed") {
-        return "This email is not allowlisted for this planner.";
-      }
       if (description) {
         return description;
       }
@@ -137,14 +134,23 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-stone-50 px-6 py-12">
-      <div className="w-full max-w-sm">
+    <div className="relative min-h-screen flex items-center justify-center px-6 py-12">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: "url(/login-background.jpg)" }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 bg-stone-950/35"
+      />
+      <div className="relative z-10 w-full max-w-sm">
         <div className="mb-10 text-center">
-          <div className="text-3xl font-serif tracking-tight text-stone-900">
-            Better Planner
+          <div className="text-3xl font-serif tracking-tight text-white drop-shadow-sm">
+            Wedding Date Planner
           </div>
-          <div className="mt-2 text-sm text-stone-500">
-            Pick a date, together.
+          <div className="mt-2 text-sm text-white/85 drop-shadow-sm">
+            Stop playin with me.
           </div>
         </div>
 
@@ -198,7 +204,7 @@ export default function LoginPage() {
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Adam"
+                placeholder="e.g. Alex"
                 className="mt-1 w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-stone-900 outline-none focus:border-stone-400"
               />
             </label>

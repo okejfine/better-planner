@@ -1,6 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { isEmailAllowed } from "@/lib/auth-allowlist";
 import { getSiteUrl } from "@/lib/site-url";
 
 export async function GET(request: NextRequest) {
@@ -34,13 +33,6 @@ export async function GET(request: NextRequest) {
     );
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user?.email || !isEmailAllowed(user.email)) {
-        await supabase.auth.signOut();
-        return NextResponse.redirect(`${siteUrl}/login?error=not_allowed`);
-      }
       return response;
     }
   }

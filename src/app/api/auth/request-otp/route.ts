@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { isEmailAllowed } from "@/lib/auth-allowlist";
 import { getSiteUrl } from "@/lib/site-url";
 
 type RequestBody = {
@@ -17,17 +16,6 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { error: "Please provide both name and email." },
       { status: 400 },
-    );
-  }
-
-  if (!isEmailAllowed(email)) {
-    return NextResponse.json(
-      {
-        error:
-          "This email is not on the allowlist. Ask the organizer to add it.",
-        code: "not_allowed",
-      },
-      { status: 403 },
     );
   }
 

@@ -1,5 +1,10 @@
 # Better Planner — Build Plan
 
+> **Note:** This document is a historical build plan and may be out of date.
+> For current setup, architecture, and deployment instructions see **[README.md](README.md)**.
+
+---
+
 Collaborative date-and-venue picker for a Utah County wedding, **August–October 2026**. Six users (Adam, fiancée, both sets of parents) rate, veto, shortlist, and discuss candidate dates against weather, BYU football, and federal holidays.
 
 ---

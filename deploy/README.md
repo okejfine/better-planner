@@ -20,11 +20,13 @@ Reserved/Savings Plan can drop the nano to ~$1.5–2/mo if you commit 1 year.
 ## Current production URL
 
 ```
-http://ec2-100-28-145-224.compute-1.amazonaws.com
+https://alexandmaclaine.com
 ```
 
-Port `80` is served by Caddy (reverse proxy → `localhost:3000`).
-No custom domain yet; see **Reverse proxy (no domain)** below.
+Legacy (until DNS fully propagates): `http://ec2-100-28-145-224.compute-1.amazonaws.com`
+
+Port `80`/`443` are served by Caddy (reverse proxy → `localhost:3000`).
+EC2 public IP: `100.28.145.224` — point your domain's A records here.
 
 ## One-time server setup
 
@@ -49,9 +51,9 @@ mkdir -p /home/ec2-user/better-planner
 
 ```
 SUPABASE_SERVICE_ROLE_KEY=eyJ...service-role...
-AUTH_EMAIL_ALLOWLIST=king@hoth.com,emward123@live.com,kingadamrex@gmail.com,alexsking77@gmail.com
+ADMIN_EMAILS=king@hoth.com,alexsking77@gmail.com
 BYPASS_AUTH=false
-SITE_URL=http://ec2-100-28-145-224.compute-1.amazonaws.com
+SITE_URL=https://alexandmaclaine.com
 ```
 
 > **`SITE_URL` is required.**  The server uses it to build `emailRedirectTo`
@@ -102,7 +104,7 @@ curl -I http://ec2-100-28-145-224.compute-1.amazonaws.com/
 In `better-planner/.env.local`:
 
 ```
-NEXT_PUBLIC_SITE_URL=http://ec2-100-28-145-224.compute-1.amazonaws.com
+NEXT_PUBLIC_SITE_URL=https://alexandmaclaine.com
 ```
 
 > `NEXT_PUBLIC_SITE_URL` is the build-time fallback.  `SITE_URL` in
@@ -115,9 +117,11 @@ In **Supabase → Auth → URL Configuration** set:
 
 | Field | Value |
 |---|---|
-| Site URL | `http://ec2-100-28-145-224.compute-1.amazonaws.com` |
-| Redirect URLs | `http://ec2-100-28-145-224.compute-1.amazonaws.com/auth/callback` |
-|               | `http://ec2-100-28-145-224.compute-1.amazonaws.com/reset-password` |
+| Site URL | `https://alexandmaclaine.com` |
+| Redirect URLs | `https://alexandmaclaine.com/auth/callback` |
+|               | `https://alexandmaclaine.com/reset-password` |
+|               | `https://www.alexandmaclaine.com/auth/callback` |
+|               | `https://www.alexandmaclaine.com/reset-password` |
 
 Without these entries Supabase will reject the `emailRedirectTo` URL in magic
 links and the `redirectTo` URL in password-reset emails.
@@ -133,33 +137,46 @@ SSH_KEY=~/.ssh/your-key.pem \
 This builds locally, assembles the standalone bundle, rsyncs it up, and restarts
 the service.
 
-## TLS (recommended once you have a domain)
+## TLS (custom domain)
 
-Replace the `:80` Caddyfile block with your domain name — Caddy handles
-certificate provisioning automatically:
+Caddy auto-provisions Let's Encrypt certificates. The live Caddyfile:
 
 ```
-your-domain.com {
+alexandmaclaine.com, www.alexandmaclaine.com {
+    reverse_proxy localhost:3000
+}
+
+http://ec2-100-28-145-224.compute-1.amazonaws.com {
     reverse_proxy localhost:3000
 }
 ```
 
-Then:
+The EC2 hostname block is a fallback until DNS propagates; remove it once
+`https://alexandmaclaine.com` is stable.
 
-1. Point your domain's A record at the EC2 **Elastic IP** (allocate one so the
-   address doesn't change on reboot — Elastic IPs are free while attached to a
-   running instance).
-2. Update `SITE_URL` in `runtime.env` to `https://your-domain.com`.
-3. Update `NEXT_PUBLIC_SITE_URL` in `.env.local` and rebuild.
-4. Update **Supabase Site URL** and **Redirect URLs** to the new `https://` URLs.
-5. Redeploy.
+**DNS (at your registrar):**
+
+| Host | Type | Value |
+|---|---|---|
+| `@` (apex) | A | `100.28.145.224` |
+| `www` | A | `100.28.145.224` |
+
+> **Note:** `alexandmaclaine.com` currently resolves to `74.208.236.206` — update
+> both records to the EC2 IP above. Consider attaching an **Elastic IP** in AWS
+> so the address survives instance reboots (free while the instance is running).
+
+After DNS propagates:
+
+1. Caddy obtains HTTPS certs automatically (`sudo systemctl reload caddy`).
+2. Update **Supabase Site URL** and **Redirect URLs** (see table above).
+3. Redeploy if you changed `NEXT_PUBLIC_SITE_URL` in `.env.local`.
 
 ## Verifying magic links end-to-end
 
 After deploying (including Caddy + `SITE_URL` in runtime.env):
 
 1. Open `http://ec2-100-28-145-224.compute-1.amazonaws.com/login`.
-2. Enter your name and an allowlisted email; click **Send magic link**.
+2. Enter your name and email; click **Send magic link**.
 3. Open the email.  The link should start with
    `http://ec2-100-28-145-224.compute-1.amazonaws.com/auth/callback?code=…`
    (not `localhost`).
@@ -167,4 +184,3 @@ After deploying (including Caddy + `SITE_URL` in runtime.env):
 5. If the link bounces to `/login?error=callback`, check:
    - `SITE_URL` is set correctly in `runtime.env`.
    - The callback URL is listed in Supabase Redirect URLs.
-   - Your email is in `AUTH_EMAIL_ALLOWLIST`.
