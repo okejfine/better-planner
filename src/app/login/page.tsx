@@ -133,29 +133,6 @@ export default function LoginPage() {
       return;
     }
 
-    const siteUrl =
-      process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin;
-    const { error } = await supabase.auth.signInWithOtp({
-      email: normalizedEmail,
-      options: {
-        emailRedirectTo: `${siteUrl}/auth/callback`,
-        data: { display_name: name.trim() },
-      },
-    });
-
-    if (error) {
-      const lower = error.message.toLowerCase();
-      const rateLimited =
-        lower.includes("rate limit") || lower.includes("over_email_send_rate_limit");
-      setState({
-        kind: "error",
-        message: rateLimited
-          ? "Supabase email rate limit reached. Wait a bit and request a new magic link."
-          : error.message,
-      });
-      return;
-    }
-
     setState({ kind: "sent", email: normalizedEmail });
   }
 

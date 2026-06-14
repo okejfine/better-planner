@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 import { isEmailAllowed } from "@/lib/auth-allowlist";
+import { getSiteUrl } from "@/lib/site-url";
 
 type RequestBody = {
   name?: string;
@@ -26,6 +28,38 @@ export async function POST(request: Request) {
         code: "not_allowed",
       },
       { status: 403 },
+    );
+  }
+
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+  );
+
+  const siteUrl = getSiteUrl(request);
+  const emailRedirectTo = `${siteUrl}/auth/callback`;
+
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: {
+      emailRedirectTo,
+      data: { display_name: name },
+    },
+  });
+
+  if (error) {
+    const lower = error.message.toLowerCase();
+    const rateLimited =
+      lower.includes("rate limit") ||
+      lower.includes("over_email_send_rate_limit");
+    return NextResponse.json(
+      {
+        error: rateLimited
+          ? "Email rate limit reached. Please wait a moment and try again."
+          : error.message,
+        code: rateLimited ? "rate_limited" : "supabase_error",
+      },
+      { status: rateLimited ? 429 : 500 },
     );
   }
 

@@ -1,13 +1,18 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { isEmailAllowed } from "@/lib/auth-allowlist";
+import { getSiteUrl } from "@/lib/site-url";
 
 export async function GET(request: NextRequest) {
-  const { searchParams, origin } = new URL(request.url);
+  const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
   const next = searchParams.get("next") ?? "/";
-  const redirectTo = `${origin}${next}`;
-  const errorRedirect = `${origin}/login?error=callback`;
+
+  // Use the canonical site URL so redirects always point at the correct host,
+  // even when EC2 is behind a reverse proxy that rewrites the Host header.
+  const siteUrl = getSiteUrl(request);
+  const redirectTo = `${siteUrl}${next}`;
+  const errorRedirect = `${siteUrl}/login?error=callback`;
   const response = NextResponse.redirect(redirectTo);
 
   if (code) {
@@ -34,7 +39,7 @@ export async function GET(request: NextRequest) {
       } = await supabase.auth.getUser();
       if (!user?.email || !isEmailAllowed(user.email)) {
         await supabase.auth.signOut();
-        return NextResponse.redirect(`${origin}/login?error=not_allowed`);
+        return NextResponse.redirect(`${siteUrl}/login?error=not_allowed`);
       }
       return response;
     }

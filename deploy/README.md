@@ -17,11 +17,21 @@ Reserved/Savings Plan can drop the nano to ~$1.5–2/mo if you commit 1 year.
 > Build on your Mac (Apple Silicon = arm64) and ship the artifact. The nano
 > never compiles anything, so 0.5 GB RAM is enough.
 
+## Current production URL
+
+```
+http://ec2-100-28-145-224.compute-1.amazonaws.com
+```
+
+Port `80` is served by Caddy (reverse proxy → `localhost:3000`).
+No custom domain yet; see **Reverse proxy (no domain)** below.
+
 ## One-time server setup
 
 1. **Launch** a `t4g.nano`, Amazon Linux 2023 (arm64). Create/download a key pair.
-2. **Security group:** allow inbound `22` (your IP only) and `80`/`443` (0.0.0.0/0).
-   If you skip a domain/TLS, also allow `3000` and use `http://<ip>:3000`.
+2. **Security group:** allow inbound `22` (your IP only), `80` (0.0.0.0/0), and
+   `443` (0.0.0.0/0 — for future HTTPS).  
+   *Do not expose port `3000` publicly once Caddy is running.*
 3. SSH in and install Node + swap:
 
 ```bash
@@ -41,7 +51,13 @@ mkdir -p /home/ec2-user/better-planner
 SUPABASE_SERVICE_ROLE_KEY=eyJ...service-role...
 AUTH_EMAIL_ALLOWLIST=king@hoth.com,emward123@live.com,kingadamrex@gmail.com,alexsking77@gmail.com
 BYPASS_AUTH=false
+SITE_URL=http://ec2-100-28-145-224.compute-1.amazonaws.com
 ```
+
+> **`SITE_URL` is required.**  The server uses it to build `emailRedirectTo`
+> in magic-link emails.  Without it, links in emails will point at
+> `localhost:3000` and fail.  When you get a custom domain, update this value
+> (and the Supabase redirect URLs below) and redeploy.
 
 5. **Install the service:**
 
@@ -53,47 +69,102 @@ sudo systemctl daemon-reload
 sudo systemctl enable better-planner
 ```
 
-## Build-time env (on your Mac)
+## Reverse proxy (no domain — HTTP only)
 
-`NEXT_PUBLIC_*` values are inlined at build, so set them before deploying.
-In `better-planner/.env.local` set `NEXT_PUBLIC_SITE_URL` to the PUBLIC url:
-
-```
-NEXT_PUBLIC_SITE_URL=https://your-domain.com     # or http://<ec2-ip>:3000
-```
-
-Also add that exact URL to **Supabase → Auth → URL Configuration → Redirect URLs**
-(`<url>/auth/callback` and `<url>/reset-password`), or auth callbacks will break.
-
-## Deploy / redeploy
-
-```bash
-EC2_HOST=ec2-user@<ip> SSH_KEY=~/.ssh/your-key.pem ./deploy/deploy.sh
-```
-
-This builds locally, assembles the standalone bundle, rsyncs it up, and restarts
-the service.
-
-## TLS (recommended if you have a domain)
-
-Run Caddy as a reverse proxy for automatic HTTPS:
+Install Caddy to proxy port `80` → `localhost:3000`.  This means users reach
+the app at `http://ec2-100-28-145-224.compute-1.amazonaws.com` without needing
+to specify a port.
 
 ```bash
 sudo dnf install -y 'dnf-command(copr)'
 sudo dnf copr enable -y @caddy/caddy
 sudo dnf install -y caddy
-echo 'your-domain.com {
+
+sudo tee /etc/caddy/Caddyfile > /dev/null <<'EOF'
+:80 {
     reverse_proxy localhost:3000
-}' | sudo tee /etc/caddy/Caddyfile
+}
+EOF
+
 sudo systemctl enable --now caddy
 ```
 
-Point your domain's A record at the EC2 public IP (use an Elastic IP so it
-doesn't change on reboot — Elastic IPs are free while attached to a running
-instance).
+Verify:
 
-## No-domain option
+```bash
+curl -I http://ec2-100-28-145-224.compute-1.amazonaws.com/
+# Should return HTTP/1.1 200 (or 307 redirect to /login)
+```
 
-Skip Caddy, open port `3000` in the security group, set
-`NEXT_PUBLIC_SITE_URL=http://<ec2-ip>:3000`, and use that URL. Works fine for 2
-users; just no HTTPS.
+## Build-time env (on your Mac)
+
+`NEXT_PUBLIC_*` values are inlined at build, so set them before deploying.
+In `better-planner/.env.local`:
+
+```
+NEXT_PUBLIC_SITE_URL=http://ec2-100-28-145-224.compute-1.amazonaws.com
+```
+
+> `NEXT_PUBLIC_SITE_URL` is the build-time fallback.  `SITE_URL` in
+> `runtime.env` takes precedence at runtime and is the authoritative value
+> for auth email links.
+
+## Supabase Auth configuration
+
+In **Supabase → Auth → URL Configuration** set:
+
+| Field | Value |
+|---|---|
+| Site URL | `http://ec2-100-28-145-224.compute-1.amazonaws.com` |
+| Redirect URLs | `http://ec2-100-28-145-224.compute-1.amazonaws.com/auth/callback` |
+|               | `http://ec2-100-28-145-224.compute-1.amazonaws.com/reset-password` |
+
+Without these entries Supabase will reject the `emailRedirectTo` URL in magic
+links and the `redirectTo` URL in password-reset emails.
+
+## Deploy / redeploy
+
+```bash
+EC2_HOST=ec2-user@ec2-100-28-145-224.compute-1.amazonaws.com \
+SSH_KEY=~/.ssh/your-key.pem \
+./deploy/deploy.sh
+```
+
+This builds locally, assembles the standalone bundle, rsyncs it up, and restarts
+the service.
+
+## TLS (recommended once you have a domain)
+
+Replace the `:80` Caddyfile block with your domain name — Caddy handles
+certificate provisioning automatically:
+
+```
+your-domain.com {
+    reverse_proxy localhost:3000
+}
+```
+
+Then:
+
+1. Point your domain's A record at the EC2 **Elastic IP** (allocate one so the
+   address doesn't change on reboot — Elastic IPs are free while attached to a
+   running instance).
+2. Update `SITE_URL` in `runtime.env` to `https://your-domain.com`.
+3. Update `NEXT_PUBLIC_SITE_URL` in `.env.local` and rebuild.
+4. Update **Supabase Site URL** and **Redirect URLs** to the new `https://` URLs.
+5. Redeploy.
+
+## Verifying magic links end-to-end
+
+After deploying (including Caddy + `SITE_URL` in runtime.env):
+
+1. Open `http://ec2-100-28-145-224.compute-1.amazonaws.com/login`.
+2. Enter your name and an allowlisted email; click **Send magic link**.
+3. Open the email.  The link should start with
+   `http://ec2-100-28-145-224.compute-1.amazonaws.com/auth/callback?code=…`
+   (not `localhost`).
+4. Click the link.  The browser should land on `/` (the calendar).
+5. If the link bounces to `/login?error=callback`, check:
+   - `SITE_URL` is set correctly in `runtime.env`.
+   - The callback URL is listed in Supabase Redirect URLs.
+   - Your email is in `AUTH_EMAIL_ALLOWLIST`.

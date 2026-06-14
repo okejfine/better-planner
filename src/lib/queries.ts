@@ -1,6 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
+import { CITIES } from "@/lib/cities";
 import type { CityId } from "@/lib/cities";
 import {
   WINDOW_MONTHS,
@@ -13,10 +14,14 @@ import type {
   CommentRow,
   DayRating,
   EventRow,
+  ImportedEventForDisplay,
+  ImportedEventRow,
   Profile,
   WeatherDaily,
   WeatherHourly,
   WeatherYearRain,
+  WeddingEventRow,
+  WeddingSettings,
 } from "@/lib/types";
 
 function windowStart(): Iso {
@@ -181,6 +186,37 @@ export const getYearRainForDate = cache(async (iso: Iso) => {
   return (data ?? []) as WeatherYearRain[];
 });
 
+export const getWeddingSettings = cache(async () => {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("wedding_settings")
+    .select("*")
+    .eq("id", 1)
+    .maybeSingle();
+  return (data ?? null) as WeddingSettings | null;
+});
+
+export const getWeddingEvents = cache(async () => {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("wedding_events")
+    .select("*")
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: true });
+  return (data ?? []) as WeddingEventRow[];
+});
+
+export const getImportedEventsInWindow = cache(async () => {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("imported_events")
+    .select("id, user_id, date, title, uid, source_filename, created_at")
+    .gte("date", windowStart())
+    .lte("date", windowEnd())
+    .order("date", { ascending: true });
+  return (data ?? []) as ImportedEventRow[];
+});
+
 export const getCommentsForDate = cache(async (iso: Iso) => {
   const supabase = await createClient();
   const { data } = await supabase
@@ -200,7 +236,30 @@ export type DaySummary = {
   group_avg_stars: number | null;
   shortlist_count: number;
   veto_count: number;
+  imported_events: ImportedEventForDisplay[];
 };
+
+/** Compute popular cities across all shortlisted dates, sorted by frequency. */
+export function computePopularLocations(
+  summaries: Map<Iso, DaySummary>,
+): { cityId: CityId; label: string; count: number }[] {
+  const counts = new Map<CityId, number>();
+  for (const day of summaries.values()) {
+    for (const rating of day.ratings) {
+      if (!rating.shortlisted) continue;
+      for (const cityId of rating.preferred_cities) {
+        counts.set(cityId, (counts.get(cityId) ?? 0) + 1);
+      }
+    }
+  }
+  return CITIES.map((c) => ({
+    cityId: c.id,
+    label: c.label,
+    count: counts.get(c.id) ?? 0,
+  }))
+    .filter((c) => c.count > 0)
+    .sort((a, b) => b.count - a.count);
+}
 
 export async function getMonthSummary(): Promise<Map<Iso, DaySummary>> {
   const [events, ratings, weather] = await Promise.all([
@@ -222,6 +281,7 @@ export async function getMonthSummary(): Promise<Map<Iso, DaySummary>> {
         group_avg_stars: null,
         shortlist_count: 0,
         veto_count: 0,
+        imported_events: [],
       };
       byDate.set(iso, entry);
     }
@@ -273,6 +333,7 @@ export function attachWeatherToDay(
     group_avg_stars: null,
     shortlist_count: 0,
     veto_count: 0,
+    imported_events: [],
   };
   for (const w of weather) {
     if (w.month_day === md) {

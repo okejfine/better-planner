@@ -15,8 +15,11 @@ import {
   attachWeatherToDay,
   getAllProfiles,
   getCurrentUserProfile,
+  getImportedEventsInWindow,
   getMonthSummary,
   getWeatherDaily,
+  getWeddingSettings,
+  type DaySummary,
 } from "@/lib/queries";
 
 export default async function HomePage({
@@ -31,14 +34,19 @@ export default async function HomePage({
   const monthKey = parseMonthKey(monthParam);
   const month = monthKeyToCalendarMonth(monthKey);
 
-  const [byDate, weather, profiles] = await Promise.all([
-    getMonthSummary(),
-    getWeatherDaily(),
-    getAllProfiles(),
-  ]);
+  const [byDate, weather, profiles, importedEvents, weddingSettings] =
+    await Promise.all([
+      getMonthSummary(),
+      getWeatherDaily(),
+      getAllProfiles(),
+      getImportedEventsInWindow(),
+      getWeddingSettings(),
+    ]);
+
+  const profilesById = new Map(profiles.map((p) => [p.id, p]));
 
   // Build full window summary (for dashboard) + lookup map.
-  const summaries = new Map<Iso, ReturnType<typeof attachWeatherToDay>>();
+  const summaries = new Map<Iso, DaySummary>();
   const myStarsByDate = new Map<Iso, number | null>();
 
   for (const m of WINDOW_MONTHS) {
@@ -52,17 +60,34 @@ export default async function HomePage({
     }
   }
 
-  const profilesById = new Map(profiles.map((p) => [p.id, p]));
+  // Fold imported events into summaries with avatar colors
+  for (const ie of importedEvents) {
+    const day = summaries.get(ie.date as Iso);
+    if (!day) continue;
+    const profile = profilesById.get(ie.user_id);
+    if (!profile) continue;
+    day.imported_events.push({
+      id: ie.id,
+      user_id: ie.user_id,
+      title: ie.title,
+      avatar_color: profile.avatar_color,
+    });
+  }
+
+  const finalDate = weddingSettings?.final_date ?? null;
+  const meHasImports = importedEvents.some((ie) => ie.user_id === me.id);
 
   return (
     <>
-      <Header me={me} />
+      <Header me={me} finalDate={finalDate} />
       <main className="flex-1 max-w-6xl w-full mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6">
         <Dashboard
           summaries={summaries}
           meId={me.id}
           profilesById={profilesById}
           profiles={profiles}
+          finalDate={finalDate}
+          meHasImports={meHasImports}
         />
 
         <MonthNav current={monthKey} />

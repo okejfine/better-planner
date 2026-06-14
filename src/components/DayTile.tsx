@@ -121,20 +121,36 @@ export function DayTile({
     </div>
   );
 
+  // Deduplicate imported-event uploader colors for dots
+  const importedUploaderColors = Array.from(
+    new Map(
+      (summary?.imported_events ?? []).map((ie) => [ie.user_id, ie.avatar_color]),
+    ).values(),
+  );
+
   // Mobile: single row of small colored dots representing event kinds.
   // Desktop: full event bars (existing behavior).
-  const eventDotsMobile = summary?.events && summary.events.length > 0 && (
+  const eventDotsMobile = (summary?.events && summary.events.length > 0 ||
+    importedUploaderColors.length > 0) && (
     <div className="sm:hidden mt-0.5 flex items-center gap-0.5 flex-wrap">
-      {summary.events.slice(0, 4).map((e) => (
+      {summary?.events.slice(0, 4).map((e) => (
         <span
           key={e.id}
           className={cn("h-1.5 w-1.5 rounded-full", EVENT_DOT_COLOR[e.kind])}
           title={e.title}
         />
       ))}
-      {summary.events.length > 4 && (
+      {importedUploaderColors.map((color, i) => (
+        <span
+          key={`imp-${i}`}
+          className="h-1.5 w-1.5 rounded-full"
+          style={{ backgroundColor: color }}
+          title="Imported calendar event"
+        />
+      ))}
+      {(summary?.events.length ?? 0) > 4 && (
         <span className="text-[8px] text-stone-400">
-          +{summary.events.length - 4}
+          +{(summary?.events.length ?? 0) - 4}
         </span>
       )}
     </div>
@@ -161,6 +177,18 @@ export function DayTile({
       {summary && summary.events.length > 3 && (
         <div className="text-[10px] text-stone-500 px-1">
           +{summary.events.length - 3} more
+        </div>
+      )}
+      {importedUploaderColors.length > 0 && (
+        <div className="flex items-center gap-0.5 flex-wrap mt-0.5 px-0.5">
+          {importedUploaderColors.map((color, i) => (
+            <span
+              key={`imp-d-${i}`}
+              className="h-1.5 w-1.5 rounded-full"
+              style={{ backgroundColor: color }}
+              title="Imported calendar event"
+            />
+          ))}
         </div>
       )}
     </div>

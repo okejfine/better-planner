@@ -6,13 +6,16 @@ import {
   getCommentsForDate,
   getCurrentUserProfile,
   getEventsInWindow,
+  getImportedEventsInWindow,
   getRatingsInWindow,
   getWeatherDaily,
   getWeatherHourlyForDate,
+  getWeddingSettings,
   getYearRainForDate,
 } from "@/lib/queries";
 import { fromIso, isoToMonthKey, isInWindow } from "@/lib/dates";
 import { CITIES } from "@/lib/cities";
+import { isAdmin } from "@/lib/admin";
 import { Header } from "@/components/Header";
 import { EventBar } from "@/components/EventBar";
 import { StarRatingInput } from "@/components/StarRatingInput";
@@ -24,6 +27,7 @@ import { CustomEventItem } from "@/components/CustomEventItem";
 import { RainLikelihoodCard } from "@/components/RainLikelihoodCard";
 import { StarsRow } from "@/components/StarsRow";
 import { PreferredCitiesInput } from "@/components/PreferredCitiesInput";
+import { SetFinalDateButton } from "@/components/SetFinalDateButton";
 import { initials } from "@/lib/utils";
 
 export default async function DayPage({
@@ -45,6 +49,8 @@ export default async function DayPage({
     dailyWeather,
     comments,
     yearRain,
+    weddingSettings,
+    importedEvents,
   ] = await Promise.all([
     getAllProfiles(),
     getEventsInWindow(),
@@ -53,13 +59,19 @@ export default async function DayPage({
     getWeatherDaily(),
     getCommentsForDate(date),
     getYearRainForDate(date),
+    getWeddingSettings(),
+    getImportedEventsInWindow(),
   ]);
 
   const profilesById = new Map(profiles.map((p) => [p.id, p]));
   const events = allEvents.filter((e) => e.date === date);
   const ratings = allRatings.filter((r) => r.date === date);
+  const dayImports = importedEvents.filter((ie) => ie.date === date);
 
   const myRating = ratings.find((r) => r.user_id === me.id);
+  const meIsAdmin = isAdmin(me.email ?? "");
+  const finalDate = weddingSettings?.final_date ?? null;
+  const isFinalDate = finalDate === date;
 
   // Daily weather summary across cities for this date
   const md = `${date.slice(5, 7)}${date.slice(8, 10)}`;
@@ -85,7 +97,7 @@ export default async function DayPage({
 
   return (
     <>
-      <Header me={me} />
+      <Header me={me} finalDate={finalDate} />
       <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-5 sm:py-8 space-y-5 sm:space-y-8">
         <Link
           href={`/?month=${isoToMonthKey(date)}`}
@@ -95,12 +107,27 @@ export default async function DayPage({
         </Link>
 
         <div>
-          <div className="text-xs uppercase tracking-widest text-stone-400">
-            {format(dateObj, "EEEE")}
+          <div className="flex items-center gap-3">
+            <div className="text-xs uppercase tracking-widest text-stone-400">
+              {format(dateObj, "EEEE")}
+            </div>
+            {isFinalDate && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-800">
+                💍 Final Wedding Date
+              </span>
+            )}
           </div>
-          <h1 className="font-serif text-3xl sm:text-5xl tracking-tight text-stone-900 mt-1">
-            {format(dateObj, "MMMM d, yyyy")}
-          </h1>
+          <div className="flex items-start justify-between gap-3 mt-1">
+            <h1 className="font-serif text-3xl sm:text-5xl tracking-tight text-stone-900">
+              {format(dateObj, "MMMM d, yyyy")}
+            </h1>
+            {meIsAdmin && !isSunday && (
+              <SetFinalDateButton
+                date={date}
+                isFinalDate={isFinalDate}
+              />
+            )}
+          </div>
           {avgHigh !== null && (
             <p className="text-stone-500 mt-2 text-sm">
               Average <strong className="text-stone-700">{Math.round(avgHigh)}°</strong> high /{" "}
@@ -273,6 +300,35 @@ export default async function DayPage({
             </>
           )}
         </section>
+
+        {dayImports.length > 0 && (
+          <section className="space-y-3">
+            <div className="text-xs uppercase tracking-wider text-stone-500 font-medium">
+              Calendar Imports
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {dayImports.map((ie) => {
+                const profile = profilesById.get(ie.user_id);
+                return (
+                  <div
+                    key={ie.id}
+                    className="flex items-center gap-2 rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm"
+                  >
+                    {profile && (
+                      <div
+                        className="h-5 w-5 rounded-full flex items-center justify-center text-white text-[9px] font-medium shrink-0"
+                        style={{ backgroundColor: profile.avatar_color }}
+                      >
+                        {initials(profile.display_name)}
+                      </div>
+                    )}
+                    <span className="text-stone-700">{ie.title}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         <section className="space-y-4">
           <div className="text-xs uppercase tracking-wider text-stone-500 font-medium">

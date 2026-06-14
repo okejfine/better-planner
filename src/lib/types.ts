@@ -1,5 +1,43 @@
 import type { CityId } from "@/lib/cities";
 
+export type WeddingSettings = {
+  id: number;
+  final_date: string | null;
+  set_by: string | null;
+  updated_at: string;
+};
+
+export type WeddingEventRow = {
+  id: string;
+  kind: string;
+  title: string;
+  location: CityId | null;
+  event_date: string | null;
+  event_time: string | null;
+  notes: string | null;
+  created_by: string | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ImportedEventRow = {
+  id: string;
+  user_id: string;
+  date: string;
+  title: string;
+  uid: string;
+  source_filename: string | null;
+  created_at: string;
+};
+
+export type ImportedEventForDisplay = {
+  id: string;
+  user_id: string;
+  title: string;
+  avatar_color: string;
+};
+
 export type EventKind =
   | "byu_football_home"
   | "byu_football_away"
